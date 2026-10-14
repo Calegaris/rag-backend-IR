@@ -5,6 +5,7 @@ import llmConfig from './config/llm.config';
 import embeddingConfig from './config/embedding.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
+import { ScenariosModule } from './modules/scenarios/scenarios.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HealthModule } from './modules/health/health.module';
     }),
     PrismaModule,
     HealthModule,
+    ScenariosModule,
   ],
 })
 export class AppModule {}
