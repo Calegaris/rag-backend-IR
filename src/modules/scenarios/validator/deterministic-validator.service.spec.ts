@@ -65,6 +65,12 @@ describe('DeterministicValidatorService', () => {
       expect(nonSeqIssue).toBeDefined();
       expect(nonSeqIssue?.severity).toBe('ERROR');
       expect(nonSeqIssue?.message).toContain('no está balanceado');
+
+      // Conteo en summary: ambos son errores sintácticos/gramaticales con severity ERROR
+      expect(report.summary.syntaxErrorsCount).toBe(2);
+      expect(report.summary.structuralErrorsCount).toBe(0);
+      const totalErrors = report.validations.deterministic.filter((i) => i.severity === 'ERROR').length;
+      expect(report.summary.syntaxErrorsCount + report.summary.structuralErrorsCount).toBe(totalErrors);
     });
   });
 

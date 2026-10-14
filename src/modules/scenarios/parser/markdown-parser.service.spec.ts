@@ -183,4 +183,47 @@ Solución: El Sistema dará aviso que el tipo de archivo que intenta subir no es
       expect(parsed.episodes[4].type).toBe('SUB_SCENARIO');
     });
   });
+
+  describe('Casos Borde de Formato (Prefijos de Título y Separadores de Excepción)', () => {
+    it('debe limpiar el prefijo "TÍTULO:" o "Título:" en encabezados H1', () => {
+      const markdown = `
+# TÍTULO: COBRAR EL TRÁMITE
+**Objetivo:** Cobrar trámite
+**Contexto:**
+- **Ubicación Geográfica:** Ventanilla
+**Recursos:** TPV
+**Actores:** Cajero
+**Episodios:**
+1. El Cajero solicita el monto
+2. El Cajero cobra el monto
+`;
+      const parsed = service.parse(markdown);
+      expect(parsed.title).toBe('COBRAR EL TRÁMITE');
+    });
+
+    it('debe limpiar completamente "Solución / Tratamiento:" sin dejar residuos en causa', () => {
+      const markdown = `
+# REGISTRAR PAGO
+**Objetivo:** Cobrar
+**Contexto:**
+- **Ubicación Geográfica:** Ventanilla
+**Recursos:** TPV
+**Actores:** Cajero
+**Episodios:**
+1. El Cajero cobra
+2. El Cajero entrega ticket
+**Excepciones:**
+Causa: Tarjeta sin fondos suficientes.
+Solución / Tratamiento: El Cajero solicita otro medio de pago al cliente.
+`;
+      const parsed = service.parse(markdown);
+      expect(parsed.exceptions).toHaveLength(1);
+      expect(parsed.exceptions[0].causa).toBe('Tarjeta sin fondos suficientes.');
+      expect(parsed.exceptions[0].causa).not.toContain('Solución /');
+      expect(parsed.exceptions[0].tratamiento).toBe(
+        'El Cajero solicita otro medio de pago al cliente.',
+      );
+    });
+  });
 });
+

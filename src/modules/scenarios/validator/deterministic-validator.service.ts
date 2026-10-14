@@ -39,8 +39,12 @@ export class DeterministicValidatorService {
     const isValid = errorIssues.length === 0;
 
     const summary: ValidationSummary = {
-      syntaxErrorsCount: issues.filter((i) => i.defectType === 'E' && i.severity === 'ERROR').length,
-      structuralErrorsCount: issues.filter((i) => i.defectType === 'O' && i.severity === 'ERROR').length,
+      syntaxErrorsCount: issues.filter(
+        (i) => (i.defectType === 'E' || i.defectType === 'A') && i.severity === 'ERROR',
+      ).length,
+      structuralErrorsCount: issues.filter(
+        (i) => (i.defectType === 'O' || i.defectType === 'D') && i.severity === 'ERROR',
+      ).length,
       warningsCount: issues.filter((i) => i.severity === 'WARNING').length,
       semanticIssuesCount: 0,
     };

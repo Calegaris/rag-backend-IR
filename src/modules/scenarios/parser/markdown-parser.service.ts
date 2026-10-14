@@ -106,7 +106,13 @@ export class MarkdownParserService {
       }
     }
 
-    return { title: title.trim(), scenarioNumber };
+    // Limpiar prefijo opcional "Título:" / "Titulo:" / "TÍTULO:" / "Título del Escenario:"
+    title = title
+      .replace(/\*\*/g, '')
+      .replace(/^(?:T[ií]tulo(?:\s+del\s+Escenario)?)\s*:\s*/i, '')
+      .trim();
+
+    return { title, scenarioNumber };
   }
 
   private extractTypeAndRole(text: string): { type: PrismaScenarioType; rawRole: TemplateScenarioRole } {
@@ -342,10 +348,11 @@ export class MarkdownParserService {
 
     // Formato 1: "Causa: <causa>. Tratamiento: <tratamiento>" (oficial en una o múltiples líneas)
     const regexOficial =
-      /Causa:\s*([\s\S]+?)(?=(?:\r?\n\s*|\s+)(?:Tratamiento|Soluci[oó]n)\s*:)\s*(?:Tratamiento|Soluci[oó]n)\s*:\s*([\s\S]+?)(?=(?:\n\s*Causa:|$))/gi;
+      /Causa:\s*([\s\S]+?)(?=(?:\r?\n\s*|\s+)(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:)\s*(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:\s*([\s\S]+?)(?=(?:\n\s*Causa:|$))/gi;
     let matchOficial: RegExpExecArray | null;
     while ((matchOficial = regexOficial.exec(rawExceptions)) !== null) {
-      const causa = matchOficial[1].replace(/^[●*•\-]\s*/, '').replace(/\*\*/g, '').trim();
+      let causa = matchOficial[1].replace(/^[●*•\-]\s*/, '').replace(/\*\*/g, '').trim();
+      causa = causa.replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
       const tratamiento = matchOficial[2].replace(/^[●*•\-]\s*/, '').replace(/\*\*/g, '').trim();
       if (!this.isEmptyValue(causa) || !this.isEmptyValue(tratamiento)) {
         exceptions.push({ causa, tratamiento, rawText: matchOficial[0].trim() });
@@ -362,7 +369,8 @@ export class MarkdownParserService {
 
       // Si la línea solo especifica Causa sin Tratamiento (ej. "- Causa: Corte de luz")
       if (/^Causa\s*:/i.test(trimmed) && !/(?:Tratamiento|Soluci[oó]n)\s*:/i.test(trimmed)) {
-        const causaOnly = trimmed.replace(/^Causa\s*:\s*/i, '').trim();
+        let causaOnly = trimmed.replace(/^Causa\s*:\s*/i, '').trim();
+        causaOnly = causaOnly.replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
         exceptions.push({
           causa: causaOnly,
           tratamiento: '',
@@ -373,11 +381,13 @@ export class MarkdownParserService {
 
       // Si tiene "Causa: X. Tratamiento: Y" en una sola línea
       const inlineMatch = trimmed.match(
-        /^Causa\s*:\s*(.+?)\s*[\.;]\s*(?:Tratamiento|Soluci[oó]n)\s*:\s*(.+)$/i,
+        /^Causa\s*:\s*(.+?)\s*[\.;]\s*(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:\s*(.+)$/i,
       );
       if (inlineMatch) {
+        let causa = inlineMatch[1].trim();
+        causa = causa.replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
         exceptions.push({
-          causa: inlineMatch[1].trim(),
+          causa,
           tratamiento: inlineMatch[2].trim(),
           rawText: trimmed,
         });
@@ -387,11 +397,18 @@ export class MarkdownParserService {
       // Formato con dos puntos separador: "- Causa: Tratamiento" o "- [Causa]: [Tratamiento]"
       const colonIndex = trimmed.indexOf(':');
       if (colonIndex !== -1) {
-        const part1 = trimmed.slice(0, colonIndex).replace(/^\[|\]$/g, '').trim();
-        const part2 = trimmed.slice(colonIndex + 1).replace(/^\[|\]$/g, '').trim();
+        let part1 = trimmed.slice(0, colonIndex).replace(/^\[|\]$/g, '').trim();
+        let part2 = trimmed.slice(colonIndex + 1).replace(/^\[|\]$/g, '').trim();
+        part1 = part1.replace(/^Causa\s*:\s*/i, '').replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
+        part2 = part2
+          .replace(
+            /^(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:\s*/i,
+            '',
+          )
+          .trim();
         exceptions.push({
-          causa: part1.replace(/^Causa\s*:\s*/i, ''),
-          tratamiento: part2.replace(/^(?:Tratamiento|Soluci[oó]n)\s*:\s*/i, ''),
+          causa: part1,
+          tratamiento: part2,
           rawText: trimmed,
         });
       }
