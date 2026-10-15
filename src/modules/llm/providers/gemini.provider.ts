@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, Schema } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GenerateStructuredOptions, ILLMProvider } from '../llm.interface';
@@ -32,24 +32,33 @@ export class GeminiProvider implements ILLMProvider {
         ? options.temperature
         : this.configService.get<number>('llm.temperature') ?? 0.1;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: options.systemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: options.jsonSchema as Schema | undefined,
-        temperature,
-      },
-    });
-
-    this.logger.debug(
-      `Invocando Gemini structured output con modelo: ${modelName}, temp: ${temperature}`,
+    // Detectar automáticamente si la API key es Vertex AI Express Mode (comienza con "AQ.") o Gemini Developer API
+    const isVertex = apiKey.startsWith('AQ.');
+    const ai = new GoogleGenAI(
+      isVertex ? { vertexai: true, apiKey } : { apiKey },
     );
 
-    const result = await model.generateContent(options.userPrompt);
-    const response = await result.response;
-    const text = response.text();
+    this.logger.debug(
+      `Invocando @google/genai con modelo: ${modelName}, vertexai: ${isVertex}, temp: ${temperature}`,
+    );
+
+    const config: any = {
+      systemInstruction: options.systemPrompt,
+      responseMimeType: 'application/json',
+      temperature,
+    };
+
+    if (options.jsonSchema) {
+      config.responseSchema = options.jsonSchema;
+    }
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: options.userPrompt,
+      config,
+    });
+
+    const text = response.text || '';
 
     try {
       return JSON.parse(text) as T;

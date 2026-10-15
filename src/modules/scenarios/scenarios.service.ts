@@ -262,20 +262,20 @@ Objetivo: ${data.objective}
 
 Contexto
 
-Ubicación Geográfica: ${data.context?.geographicLocation || '-'}
+Ubicación Geográfica: ${data.context?.geographicLocation || '--'}
 
-Ubicación Temporal: ${data.context?.temporalLocation || '-'}
+Ubicación Temporal: ${data.context?.temporalLocation || '--'}
 
 Precondiciones:
 ${
   data.context?.preconditions && data.context.preconditions.length > 0
     ? data.context.preconditions.map((p) => `● ${p}`).join('\n')
-    : '-'
+    : '--'
 }
 
-Recursos: ${data.resources && data.resources.length > 0 ? data.resources.join(', ') : '-'}
+Recursos: ${data.resources && data.resources.length > 0 ? data.resources.join(', ') : '--'}
 
-Actores: ${data.actors && data.actors.length > 0 ? data.actors.join(', ') : '-'}
+Actores: ${data.actors && data.actors.length > 0 ? data.actors.join(', ') : '--'}
 
 Episodios:
 `;
@@ -295,10 +295,12 @@ Episodios:
     formattedDescriptionMarkdown += `\nExcepciones:\n`;
     if (data.exceptions && data.exceptions.length > 0) {
       data.exceptions.forEach((ex) => {
-        formattedDescriptionMarkdown += `Causa: ${ex.cause}. Tratamiento: ${ex.treatment}.\n`;
+        const cleanCause = ex.cause.trim().replace(/\.+$/, '');
+        const cleanTreatment = ex.treatment.trim().replace(/\.+$/, '');
+        formattedDescriptionMarkdown += `Causa: ${cleanCause}. Tratamiento: ${cleanTreatment}.\n`;
       });
     } else {
-      formattedDescriptionMarkdown += `- -\n`;
+      formattedDescriptionMarkdown += `--\n`;
     }
 
     // Auto-validación determinística inmediata
