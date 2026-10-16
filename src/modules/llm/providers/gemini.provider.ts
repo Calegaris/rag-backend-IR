@@ -32,14 +32,10 @@ export class GeminiProvider implements ILLMProvider {
         ? options.temperature
         : this.configService.get<number>('llm.temperature') ?? 0.1;
 
-    // Detectar automáticamente si la API key es Vertex AI Express Mode (comienza con "AQ.") o Gemini Developer API
-    const isVertex = apiKey.startsWith('AQ.');
-    const ai = new GoogleGenAI(
-      isVertex ? { vertexai: true, apiKey } : { apiKey },
-    );
+    const ai = new GoogleGenAI({ apiKey });
 
     this.logger.debug(
-      `Invocando @google/genai con modelo: ${modelName}, vertexai: ${isVertex}, temp: ${temperature}`,
+      `Invocando @google/genai con modelo: ${modelName}, temp: ${temperature}`,
     );
 
     const config: any = {

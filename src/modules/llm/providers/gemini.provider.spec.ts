@@ -62,20 +62,19 @@ describe('GeminiProvider', () => {
     expect(GoogleGenAI).toHaveBeenCalledWith({ apiKey: 'AIzaSyNormalKey' });
   });
 
-  it('debe inicializar con vertexai: true cuando la apiKey comienza con AQ. (Vertex AI Express)', async () => {
+  it('debe inicializar GoogleGenAI con { apiKey } independientemente del prefijo de la key', async () => {
     mockGenerateContent.mockResolvedValueOnce({
-      text: JSON.stringify({ vertex: true }),
+      text: JSON.stringify({ ok: true }),
     });
 
-    const res = await provider.generateStructured<{ vertex: boolean }>({
+    const res = await provider.generateStructured<{ ok: boolean }>({
       systemPrompt: 'System',
       userPrompt: 'User',
       apiKeyOverride: 'AQ.Ab8RN6ILZZhfNP6whZbSSso9zEfGoq7DKD7I6Fs0uFhcZad-vwQUI',
     });
 
-    expect(res).toEqual({ vertex: true });
+    expect(res).toEqual({ ok: true });
     expect(GoogleGenAI).toHaveBeenCalledWith({
-      vertexai: true,
       apiKey: 'AQ.Ab8RN6ILZZhfNP6whZbSSso9zEfGoq7DKD7I6Fs0uFhcZad-vwQUI',
     });
   });
