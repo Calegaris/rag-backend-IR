@@ -13,8 +13,8 @@ export default registerAs(
   (): LLMConfig => ({
     provider: (process.env.LLM_PROVIDER as 'gemini' | 'claude' | 'openai') || 'gemini',
     apiKey: process.env.GEMINI_API_KEY || '',
-    model: process.env.LLM_MODEL || 'gemini-1.5-pro',
-    temperature: process.env.LLM_TEMPERATURE ? parseFloat(process.env.LLM_TEMPERATURE) : 0.2,
+    model: process.env.LLM_MODEL || 'gemini-3.6-flash',
+    temperature: process.env.LLM_TEMPERATURE ? parseFloat(process.env.LLM_TEMPERATURE) : 0.1,
     maxTokens: process.env.LLM_MAX_TOKENS ? parseInt(process.env.LLM_MAX_TOKENS, 10) : 4096,
   }),
 );
