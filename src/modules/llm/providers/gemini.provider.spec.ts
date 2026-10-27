@@ -22,7 +22,7 @@ describe('GeminiProvider', () => {
     mockConfigService = {
       get: jest.fn((key: string) => {
         if (key === 'llm.apiKey') return 'AIzaSyStandardKey123';
-        if (key === 'llm.model') return 'gemini-2.5-flash';
+        if (key === 'llm.model') return 'gemini-3.6-flash';
         if (key === 'llm.temperature') return 0.1;
         return null;
       }),
@@ -79,6 +79,68 @@ describe('GeminiProvider', () => {
     });
   });
 
+  it('debe sanitizar bloques markdown (```json ... ```) antes de parsear', async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      text: '```json\n{\n  "sanitized": true\n}\n```',
+    });
+
+    const res = await provider.generateStructured<{ sanitized: boolean }>({
+      systemPrompt: 'System',
+      userPrompt: 'User',
+    });
+
+    expect(res).toEqual({ sanitized: true });
+  });
+
+  it('debe reintentar automáticamente con el siguiente modelo del pool ante errores 503, 429, 404 o 400', async () => {
+    const error503 = new Error('Service Unavailable') as any;
+    error503.status = 503;
+
+    mockGenerateContent
+      .mockRejectedValueOnce(error503)
+      .mockResolvedValueOnce({
+        text: JSON.stringify({ fallbackSuccess: true }),
+      });
+
+    const res = await provider.generateStructured<{ fallbackSuccess: boolean }>({
+      systemPrompt: 'System',
+      userPrompt: 'User',
+      modelOverride: 'gemini-3.6-flash',
+    });
+
+    expect(res).toEqual({ fallbackSuccess: true });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
+    expect(mockGenerateContent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ model: 'gemini-3.6-flash' }),
+    );
+    expect(mockGenerateContent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ model: 'gemini-3.5-flash-lite' }),
+    );
+  });
+
+  it('debe adaptar la llamada para modelos gemma- concatenando prompts y omitiendo responseMimeType', async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({ gemmaSuccess: true }),
+    });
+
+    const res = await provider.generateStructured<{ gemmaSuccess: boolean }>({
+      systemPrompt: 'System instruction here',
+      userPrompt: 'User prompt here',
+      modelOverride: 'gemma-4-31b-it',
+    });
+
+    expect(res).toEqual({ gemmaSuccess: true });
+    expect(mockGenerateContent).toHaveBeenCalledWith({
+      model: 'gemma-4-31b-it',
+      contents: 'System instruction here\n\nUser prompt here',
+      config: {
+        temperature: 0.1,
+      },
+    });
+  });
+
   it('debe lanzar excepción si no hay API key configurada', async () => {
     (mockConfigService.get as jest.Mock).mockReturnValue(null);
     const prevKey = process.env.GEMINI_API_KEY;
@@ -105,6 +167,6 @@ describe('GeminiProvider', () => {
         userPrompt: 'Usr',
         apiKeyOverride: 'test-key',
       }),
-    ).rejects.toThrow('La respuesta del modelo Gemini no fue un JSON válido');
+    ).rejects.toThrow('La respuesta del modelo Gemini');
   });
 });

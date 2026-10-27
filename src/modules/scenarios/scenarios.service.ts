@@ -59,7 +59,7 @@ export class ScenariosService {
     const modelName =
       options?.modelOverride ||
       this.configService.get<string>('llm.model') ||
-      'gemini-2.5-flash';
+      'gemini-3.6-flash';
 
     const systemPrompt = `Eres un Arquitecto de Software Senior y Experto en Ingeniería de Requisitos, especializado en la técnica de Escenarios y Léxico Extendido del Lenguaje (LEL) según el Marco Teórico oficial de Graciela Hadad y Luis Calegari.
 
@@ -156,7 +156,7 @@ LISTA DE ESCENARIOS
     const modelName =
       options?.modelOverride ||
       this.configService.get<string>('llm.model') ||
-      'gemini-2.5-flash';
+      'gemini-3.6-flash';
 
     const systemPrompt = `Eres un Arquitecto de Software Senior y Experto en Ingeniería de Requisitos, especializado en la técnica de Escenarios y Léxico Extendido del Lenguaje (LEL) según el Marco Teórico oficial (Hadad / Calegari) y el Checklist v3 de Consistencia.
 

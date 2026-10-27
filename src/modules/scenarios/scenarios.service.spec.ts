@@ -24,7 +24,7 @@ describe('ScenariosService', () => {
 
     mockConfigService = {
       get: jest.fn((key: string) => {
-        if (key === 'llm.model') return 'gemini-2.5-flash';
+        if (key === 'llm.model') return 'gemini-3.6-flash';
         return null;
       }),
     };
