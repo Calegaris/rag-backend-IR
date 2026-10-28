@@ -157,6 +157,7 @@ describe('ScenariosService', () => {
       // Validar que se parseó y pasó por el validador determinístico
       expect(response.parsedScenario).toBeDefined();
       expect(response.parsedScenario.title).toBe('CARGAR DOCUMENTACIÓN');
+      expect(response.parsedScenario.type).toBe('FUTURO');
       expect(response.parsedScenario.episodes).toHaveLength(5);
       expect(response.validationReport).toBeDefined();
       expect(typeof response.validationReport.isValid).toBe('boolean');

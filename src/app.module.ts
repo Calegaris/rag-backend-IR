@@ -6,6 +6,7 @@ import embeddingConfig from './config/embedding.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
 import { ScenariosModule } from './modules/scenarios/scenarios.module';
+import { RagModule } from './modules/rag/rag.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ScenariosModule } from './modules/scenarios/scenarios.module';
     PrismaModule,
     HealthModule,
     ScenariosModule,
+    RagModule,
   ],
 })
 export class AppModule {}

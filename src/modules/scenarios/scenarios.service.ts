@@ -305,6 +305,12 @@ Episodios:
 
     // Auto-validación determinística inmediata
     const parsedScenario = this.parser.parse(formattedDescriptionMarkdown);
+    if (
+      dto.scenarioTimeframe === 'FUTURO' &&
+      parsedScenario.type !== 'INTEGRADOR'
+    ) {
+      parsedScenario.type = 'FUTURO';
+    }
     const validationReport =
       this.deterministicValidator.validate(parsedScenario);
 

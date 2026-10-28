@@ -116,6 +116,7 @@ Solución: El Sistema dará aviso que el tipo de archivo que intenta subir no es
 
       expect(parsed.scenarioNumber).toBe(1);
       expect(parsed.title).toBe('CARGAR DOCUMENTACIÓN');
+      expect(parsed.type).toBe('FUTURO');
       expect(parsed.objective).toBe('Subir Documentos al sistema de gestión.');
       expect(parsed.contextGeo).toBeNull();
       expect(parsed.contextTime).toBeNull();

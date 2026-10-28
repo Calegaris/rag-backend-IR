@@ -21,7 +21,7 @@ export class MarkdownParserService {
     const { title, scenarioNumber } = this.extractTitle(normalized);
 
     // 2. Extraer Tipo / Rol
-    const { type, rawRole } = this.extractTypeAndRole(normalized);
+    let { type, rawRole } = this.extractTypeAndRole(normalized);
 
     // 3. Extraer Objetivo
     const objective = this.extractObjective(normalized);
@@ -32,6 +32,12 @@ export class MarkdownParserService {
     // 5. Extraer Actores y Recursos
     const actors = this.extractList(normalized, 'Actores');
     const resources = this.extractList(normalized, 'Recursos');
+    if (
+      type !== 'INTEGRADOR' &&
+      actors.some((a) => a.trim().toLowerCase() === 'sistema')
+    ) {
+      type = 'FUTURO';
+    }
 
     // 6. Extraer Episodios
     const episodes = this.extractEpisodes(normalized);
