@@ -214,10 +214,11 @@ Tu misión es realizar una VALIDACIÓN SEMÁNTICA PROFUNDA de un escenario utili
 
 IMPORTANTE:
 - NO repitas ni dupliques los errores sintácticos o determinísticos ya detectados por el parser de expresiones regulares (que se te informan en el prompt).
+- REGLA CRÍTICA SOBRE EL ACTOR 'Sistema': En los Escenarios Futuros (type: 'FUTURO'), el 'Sistema' (o 'Sistema EJE') ES un Actor válido y obligatorio en la lista de Actores según el Marco Teórico de Hadad, aunque no figure como Sujeto en el LEL del dominio. NUNCA reportes un error o warning de SEM_LEL_CONSISTENCY porque 'Sistema' figure en Actores en un escenario FUTURO.
 - Evalúa ÚNICAMENTE aspectos semánticos, conceptuales y de consistencia de dominio en las siguientes 6 dimensiones:
 
 1. Consistencia con el LEL ("SEM_LEL_CONSISTENCY"):
-   - ¿Los Actores declarados corresponden a símbolos de categoría "Sujeto" en el LEL (o al "Sistema")?
+   - ¿Los Actores declarados corresponden a símbolos de categoría "Sujeto" en el LEL (recordando que en escenarios FUTURO el 'Sistema' o 'Sistema EJE' es un Actor válido y obligatorio aunque no esté en el LEL)?
    - ¿Los Recursos declarados corresponden a símbolos de categoría "Objeto" en el LEL?
    - ¿Se utilizan sinónimos informales o términos ajenos al dominio cuando existe un Símbolo LEL específico recuperado?
    - ¿Las acciones de los episodios contradicen la Noción o el Impacto de los símbolos del LEL?
@@ -319,7 +320,8 @@ ${deterministicSummary}
 
 === ESCENARIO A EVALUAR SEMÁNTICAMENTE ===
 Título: ${parsedScenario.title}
-Tipo / Rol: ${parsedScenario.rawRole || parsedScenario.type}
+Tipo (type): ${parsedScenario.type}
+Rol: ${parsedScenario.rawRole || parsedScenario.type}
 Objetivo: ${parsedScenario.objective}
 Contexto Geográfico: ${parsedScenario.contextGeo || '--'}
 Contexto Temporal: ${parsedScenario.contextTime || '--'}
