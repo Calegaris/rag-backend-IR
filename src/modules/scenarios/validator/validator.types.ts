@@ -25,6 +25,42 @@ export interface DeterministicIssue {
   suggestion?: string;
 }
 
+export type SemanticIssueCode =
+  | 'SEM_LEL_CONSISTENCY'
+  | 'SEM_OBJECTIVE_FORMULATION'
+  | 'SEM_PRECONDITION_REDUNDANCY'
+  | 'SEM_WHAT_VS_HOW'
+  | 'SEM_EXCEPTION_TREATMENT'
+  | 'SEM_COHERENCE'
+  | string;
+
+export type SemanticIssueSeverity = 'ERROR' | 'WARNING' | 'INFO';
+
+export type SemanticIssueComponent =
+  | 'TITULO'
+  | 'OBJETIVO'
+  | 'CONTEXTO'
+  | 'ACTORES'
+  | 'RECURSOS'
+  | 'EPISODIOS'
+  | 'EXCEPCIONES'
+  | 'LEL';
+
+export interface SemanticValidationIssue {
+  code: SemanticIssueCode;
+  severity: SemanticIssueSeverity;
+  component: SemanticIssueComponent;
+  message: string;
+  suggestion: string;
+  ragReference?: string;
+  episodeNumber?: number;
+}
+
+export interface RagContextUsed {
+  marcoTeoricoChunks: number;
+  lelSymbols: string[];
+}
+
 export interface ValidationSummary {
   syntaxErrorsCount: number;
   structuralErrorsCount: number;
@@ -39,6 +75,7 @@ export interface ValidationReport {
   parsedScenario: ScenarioStructure;
   validations: {
     deterministic: DeterministicIssue[];
-    semantic: any[];
+    semantic: SemanticValidationIssue[];
   };
+  ragContextUsed?: RagContextUsed;
 }

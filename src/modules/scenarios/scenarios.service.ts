@@ -1,21 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MarkdownParserService } from './parser/markdown-parser.service';
-import { DeterministicValidatorService } from './validator/deterministic-validator.service';
-import { ParseScenarioDto } from './dto/parse-scenario.dto';
-import { ValidateScenarioDto } from './dto/validate-scenario.dto';
-import { ScenarioStructure } from './parser/parser.types';
-import { ValidationReport } from './validator/validator.types';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import { LLMFactory } from '../llm/llm.factory';
 import {
   ExtractScenariosDto,
   ExtractScenariosResponse,
 } from './dto/extract-scenarios.dto';
+import { ParseScenarioDto } from './dto/parse-scenario.dto';
 import {
   StructureScenarioDto,
   StructuredScenarioLLMOutput,
   StructureScenarioResponse,
 } from './dto/structure-scenario.dto';
+import { ValidateScenarioDto } from './dto/validate-scenario.dto';
+import { MarkdownParserService } from './parser/markdown-parser.service';
+import { ScenarioStructure } from './parser/parser.types';
+import { SemanticValidatorService } from './services/semantic-validator.service';
+import { DeterministicValidatorService } from './validator/deterministic-validator.service';
+import { ValidationReport } from './validator/validator.types';
 
 interface RawExtractLLMOutput {
   scenarios: Array<{
@@ -34,6 +37,8 @@ export class ScenariosService {
   constructor(
     private readonly parser: MarkdownParserService,
     private readonly deterministicValidator: DeterministicValidatorService,
+    private readonly semanticValidator: SemanticValidatorService,
+    private readonly prisma: PrismaService,
     private readonly llmFactory: LLMFactory,
     private readonly configService: ConfigService,
   ) {}
@@ -42,9 +47,74 @@ export class ScenariosService {
     return this.parser.parse(dto.rawMarkdown);
   }
 
-  validate(dto: ValidateScenarioDto): ValidationReport {
+  async validate(
+    dto: ValidateScenarioDto,
+    options?: {
+      apiKeyOverride?: string;
+      providerOverride?: string;
+      modelOverride?: string;
+    },
+  ): Promise<ValidationReport> {
     const parsedScenario = this.parser.parse(dto.rawMarkdown);
-    return this.deterministicValidator.validate(parsedScenario);
+    const report = this.deterministicValidator.validate(parsedScenario);
+
+    const shouldRunSemantic = dto.enableSemantic !== false;
+    let llmProviderUsed: string | null = null;
+
+    if (shouldRunSemantic) {
+      const semanticResult = await this.semanticValidator.validateSemantics(
+        parsedScenario,
+        report.validations.deterministic,
+        {
+          projectName: dto.projectName,
+          ...options,
+        },
+      );
+
+      report.validations.semantic = semanticResult.issues;
+      report.ragContextUsed = semanticResult.ragContextUsed;
+      report.summary.semanticIssuesCount = semanticResult.issues.length;
+      llmProviderUsed = semanticResult.llmProvider;
+
+      const semanticErrorsCount = semanticResult.issues.filter(
+        (issue) => issue.severity === 'ERROR',
+      ).length;
+
+      report.isValid =
+        report.summary.syntaxErrorsCount === 0 &&
+        report.summary.structuralErrorsCount === 0 &&
+        semanticErrorsCount === 0;
+    }
+
+    try {
+      await this.prisma.validationLog.create({
+        data: {
+          scenarioTitle:
+            report.scenarioTitle || parsedScenario.title || 'Sin título',
+          rawInput: dto.rawMarkdown,
+          isValid: report.isValid,
+          syntaxErrors:
+            report.validations.deterministic as unknown as Prisma.InputJsonValue,
+          semanticIssues:
+            report.validations.semantic as unknown as Prisma.InputJsonValue,
+          llmProvider: llmProviderUsed,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Could not persist ValidationLog: ${(err as Error).message}`,
+      );
+    }
+
+    return report;
+  }
+
+  async getValidations(limit = 20) {
+    const take = Math.min(Math.max(limit || 20, 1), 100);
+    return this.prisma.validationLog.findMany({
+      take,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async extract(
@@ -313,6 +383,31 @@ Episodios:
     }
     const validationReport =
       this.deterministicValidator.validate(parsedScenario);
+
+    if (dto.enableSemanticValidation === true) {
+      const semanticResult = await this.semanticValidator.validateSemantics(
+        parsedScenario,
+        validationReport.validations.deterministic,
+        {
+          projectName: dto.projectName,
+          ...options,
+        },
+      );
+
+      validationReport.validations.semantic = semanticResult.issues;
+      validationReport.ragContextUsed = semanticResult.ragContextUsed;
+      validationReport.summary.semanticIssuesCount =
+        semanticResult.issues.length;
+
+      const semanticErrorsCount = semanticResult.issues.filter(
+        (issue) => issue.severity === 'ERROR',
+      ).length;
+
+      validationReport.isValid =
+        validationReport.summary.syntaxErrorsCount === 0 &&
+        validationReport.summary.structuralErrorsCount === 0 &&
+        semanticErrorsCount === 0;
+    }
 
     return {
       projectName: dto.projectName,

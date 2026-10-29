@@ -124,3 +124,20 @@ model User {
   
   createdAt DateTime   @default(now())
 }
+
+// ============================================
+// AUDITORÍA DE VALIDACIONES
+// ============================================
+
+model ValidationLog {
+  id             String   @id @default(cuid())
+  scenarioTitle  String
+  rawInput       String   @db.Text
+  isValid        Boolean  @default(false)
+  syntaxErrors   Json
+  semanticIssues Json
+  llmProvider    String?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+}

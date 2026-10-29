@@ -1,4 +1,11 @@
-import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ScenarioStructure } from '../parser/parser.types';
 import { ValidationReport } from '../validator/validator.types';
 import { ExtractedScenarioRole } from './extract-scenarios.dto';
@@ -33,6 +40,10 @@ export class StructureScenarioDto {
   @IsString()
   @IsOptional()
   lelMarkdown?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enableSemanticValidation?: boolean;
 }
 
 export interface StructuredScenarioLLMOutput {

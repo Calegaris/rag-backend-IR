@@ -1,23 +1,25 @@
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
+  Post,
+  Query,
 } from '@nestjs/common';
-import { ScenariosService } from './scenarios.service';
-import { ParseScenarioDto } from './dto/parse-scenario.dto';
-import { ValidateScenarioDto } from './dto/validate-scenario.dto';
 import {
   ExtractScenariosDto,
   ExtractScenariosResponse,
 } from './dto/extract-scenarios.dto';
+import { ParseScenarioDto } from './dto/parse-scenario.dto';
 import {
   StructureScenarioDto,
   StructureScenarioResponse,
 } from './dto/structure-scenario.dto';
+import { ValidateScenarioDto } from './dto/validate-scenario.dto';
 import { ScenarioStructure } from './parser/parser.types';
+import { ScenariosService } from './scenarios.service';
 import { ValidationReport } from './validator/validator.types';
 
 @Controller('scenarios')
@@ -32,8 +34,26 @@ export class ScenariosController {
 
   @Post('validate')
   @HttpCode(HttpStatus.OK)
-  validate(@Body() dto: ValidateScenarioDto): ValidationReport {
-    return this.scenariosService.validate(dto);
+  async validate(
+    @Body() dto: ValidateScenarioDto,
+    @Headers('x-llm-api-key') apiKeyOverride?: string,
+    @Headers('x-llm-provider') providerOverride?: string,
+    @Headers('x-llm-model') modelOverride?: string,
+  ): Promise<ValidationReport> {
+    return this.scenariosService.validate(dto, {
+      apiKeyOverride,
+      providerOverride,
+      modelOverride,
+    });
+  }
+
+  @Get('validations')
+  @HttpCode(HttpStatus.OK)
+  async getValidations(@Query('limit') limit?: string) {
+    const parsedLimit = limit !== undefined ? Number(limit) : undefined;
+    return this.scenariosService.getValidations(
+      parsedLimit && !Number.isNaN(parsedLimit) ? parsedLimit : undefined,
+    );
   }
 
   @Post('extract')
