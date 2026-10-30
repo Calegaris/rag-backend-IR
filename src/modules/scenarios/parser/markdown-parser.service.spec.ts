@@ -145,6 +145,55 @@ Solución: El Sistema dará aviso que el tipo de archivo que intenta subir no es
         'El Sistema dará aviso que el tipo de archivo que intenta subir no es un formato admitido, mostrando los formatos que sí admite el sistema.',
       );
     });
+
+    it('debe parsear formato normalizado con viñetas "- **Campo**:" y separadores "---" (03-escenarios-futuros.md)', () => {
+      const normalizedFutureScenario = `
+### Escenario Nº: 11
+- **Título**: GESTIÓN DEL JUICIO
+- **Tipo**: Integrador
+- **Objetivo**: Gestionar el ciclo de vida completo de un proceso judicial en el fuero.
+- **Contexto**:
+  - **Ubicación Geográfica**: -
+  - **Ubicación Temporal**: -
+  - **Precondiciones**:
+    - El usuario se debe encontrar logueado.
+    - Debe existir el Proceso Judicial.
+- **Recursos**: -
+- **Actores**: -
+- **Episodios**:
+  1. LOGEAR AL SISTEMA
+  2. CREAR PROCESO JUDICIAL
+  3. CARGAR DOCUMENTACIÓN
+- **Restricciones Globales**:
+  - [Restricción: "El usuario debe estar conectado a internet mediante protocolo seguro HTTPS."]
+- **Excepciones**:
+  - Causa: Falla catastrófica de infraestructura. Tratamiento: El Sistema preserva la integridad transaccional.
+---
+`;
+
+      const parsed = service.parse(normalizedFutureScenario);
+      expect(parsed.scenarioNumber).toBe(11);
+      expect(parsed.title).toBe('GESTIÓN DEL JUICIO');
+      expect(parsed.type).toBe('INTEGRADOR');
+      expect(parsed.rawRole).toBe('INTEGRADOR');
+      expect(parsed.objective).toBe(
+        'Gestionar el ciclo de vida completo de un proceso judicial en el fuero.',
+      );
+      expect(parsed.contextGeo).toBeNull();
+      expect(parsed.contextTime).toBeNull();
+      expect(parsed.contextPrecond).toContain('El usuario se debe encontrar logueado.');
+      expect(parsed.resources).toEqual([]);
+      expect(parsed.actors).toEqual([]);
+      expect(parsed.episodes).toHaveLength(3);
+      expect(parsed.episodes[0].text).toBe('LOGEAR AL SISTEMA');
+      expect(parsed.exceptions).toHaveLength(1);
+      expect(parsed.exceptions[0].causa).toBe(
+        'Falla catastrófica de infraestructura.',
+      );
+      expect(parsed.exceptions[0].tratamiento).toBe(
+        'El Sistema preserva la integridad transaccional.',
+      );
+    });
   });
 
   describe('Manejo de Errores y Validaciones de Entrada', () => {
@@ -227,4 +276,3 @@ Solución / Tratamiento: El Cajero solicita otro medio de pago al cliente.
     });
   });
 });
-

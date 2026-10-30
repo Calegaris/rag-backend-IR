@@ -13,6 +13,7 @@ import {
   ExtractScenariosResponse,
 } from './dto/extract-scenarios.dto';
 import { ParseScenarioDto } from './dto/parse-scenario.dto';
+import { RunBenchmarkDto } from './dto/run-benchmark.dto';
 import {
   StructureScenarioDto,
   StructureScenarioResponse,
@@ -20,11 +21,18 @@ import {
 import { ValidateScenarioDto } from './dto/validate-scenario.dto';
 import { ScenarioStructure } from './parser/parser.types';
 import { ScenariosService } from './scenarios.service';
+import {
+  BenchmarkService,
+  BenchmarkSuiteReport,
+} from './services/benchmark.service';
 import { ValidationReport } from './validator/validator.types';
 
 @Controller('scenarios')
 export class ScenariosController {
-  constructor(private readonly scenariosService: ScenariosService) {}
+  constructor(
+    private readonly scenariosService: ScenariosService,
+    private readonly benchmarkService: BenchmarkService,
+  ) {}
 
   @Post('parse')
   @HttpCode(HttpStatus.OK)
@@ -54,6 +62,21 @@ export class ScenariosController {
     return this.scenariosService.getValidations(
       parsedLimit && !Number.isNaN(parsedLimit) ? parsedLimit : undefined,
     );
+  }
+
+  @Post('benchmark')
+  @HttpCode(HttpStatus.OK)
+  async runBenchmark(
+    @Body() dto: RunBenchmarkDto = {},
+    @Headers('x-llm-api-key') apiKeyOverride?: string,
+    @Headers('x-llm-provider') providerOverride?: string,
+    @Headers('x-llm-model') modelOverride?: string,
+  ): Promise<BenchmarkSuiteReport> {
+    return this.benchmarkService.runBenchmark(dto, {
+      apiKeyOverride,
+      providerOverride,
+      modelOverride,
+    });
   }
 
   @Post('extract')

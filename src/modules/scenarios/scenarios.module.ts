@@ -5,6 +5,7 @@ import { RagModule } from '../rag/rag.module';
 import { MarkdownParserService } from './parser/markdown-parser.service';
 import { ScenariosController } from './scenarios.controller';
 import { ScenariosService } from './scenarios.service';
+import { BenchmarkService } from './services/benchmark.service';
 import { SemanticValidatorService } from './services/semantic-validator.service';
 import { DeterministicValidatorService } from './validator/deterministic-validator.service';
 
@@ -15,12 +16,14 @@ import { DeterministicValidatorService } from './validator/deterministic-validat
     MarkdownParserService,
     DeterministicValidatorService,
     SemanticValidatorService,
+    BenchmarkService,
     ScenariosService,
   ],
   exports: [
     MarkdownParserService,
     DeterministicValidatorService,
     SemanticValidatorService,
+    BenchmarkService,
     ScenariosService,
   ],
 })

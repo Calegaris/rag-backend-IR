@@ -15,7 +15,9 @@ export class MarkdownParserService {
       throw new BadRequestException('El markdown provisto está vacío.');
     }
 
-    const normalized = rawMarkdown.replace(/\r\n/g, '\n');
+    const normalized = rawMarkdown
+      .replace(/\r\n/g, '\n')
+      .replace(/(?:^|\n)\s*---+\s*(?=\n|$)/g, '\n');
 
     // 1. Extraer Título y Número de Escenario
     const { title, scenarioNumber } = this.extractTitle(normalized);
@@ -27,7 +29,8 @@ export class MarkdownParserService {
     const objective = this.extractObjective(normalized);
 
     // 4. Extraer Contexto (Ubicación Geográfica, Temporal, Precondición)
-    const { contextGeo, contextTime, contextPrecond } = this.extractContext(normalized);
+    const { contextGeo, contextTime, contextPrecond } =
+      this.extractContext(normalized);
 
     // 5. Extraer Actores y Recursos
     const actors = this.extractList(normalized, 'Actores');
@@ -73,7 +76,9 @@ export class MarkdownParserService {
     if (!val) return true;
     const clean = val.replace(/\*\*/g, '').trim();
     if (clean === '') return true;
-    return /^(?:--|—|\(en blanco\)|\(vac[ií]o\)|\(vacio\)|\(nulo\)|nulo|-|none)$/i.test(clean);
+    return /^(?:--|—|\(en blanco\)|\(vac[ií]o\)|\(vacio\)|\(nulo\)|nulo|-|none)$/i.test(
+      clean,
+    );
   }
 
   private cleanValue(val: string | null | undefined): string | null {
@@ -81,19 +86,24 @@ export class MarkdownParserService {
     return val ? val.replace(/\*\*/g, '').trim() : null;
   }
 
-  private extractTitle(text: string): { title: string; scenarioNumber?: number } {
+  private extractTitle(text: string): {
+    title: string;
+    scenarioNumber?: number;
+  } {
     let title = '';
     let scenarioNumber: number | undefined;
 
     // Buscar "Escenario Nº: 1" o "Escenario Nro: 1" o "# Escenario 1:"
-    const escNumMatch = text.match(/(?:Escenario\s+(?:N[rroº°\.]*|#)\s*:?\s*(\d+))/i);
+    const escNumMatch = text.match(
+      /(?:Escenario\s+(?:N[rroº°\.]*|#)\s*:?\s*(\d+))/i,
+    );
     if (escNumMatch) {
       scenarioNumber = parseInt(escNumMatch[1], 10);
     }
 
-    // Formato 1: "Título: <texto>" o "Titulo: <texto>" o "**Título:** <texto>"
+    // Formato 1: "Título: <texto>" o "- **Título**: <texto>" o "**Título:** <texto>"
     const titleMatch = text.match(
-      /(?:^|\n)\s*(?:\*\*)?(?:T[ií]tulo(?:\s+del\s+Escenario)?)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?(?:T[ií]tulo(?:\s+del\s+Escenario)?)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
     );
     if (titleMatch) {
       title = titleMatch[1].replace(/\*\*/g, '').trim();
@@ -104,7 +114,11 @@ export class MarkdownParserService {
         const h1Match = line.match(/^\s*#\s+([^#].*)$/);
         if (h1Match) {
           const candidate = h1Match[1].replace(/\*\*/g, '').trim();
-          if (!/^(?:ESCENARIOS|DESCRIPCI[OÓ]N DE ESCENARIOS|LISTA DE ESCENARIOS)$/i.test(candidate)) {
+          if (
+            !/^(?:ESCENARIOS|DESCRIPCI[OÓ]N DE ESCENARIOS|LISTA DE ESCENARIOS|MODELO DE ESCENARIOS)/i.test(
+              candidate,
+            )
+          ) {
             title = candidate;
             break;
           }
@@ -121,11 +135,14 @@ export class MarkdownParserService {
     return { title, scenarioNumber };
   }
 
-  private extractTypeAndRole(text: string): { type: PrismaScenarioType; rawRole: TemplateScenarioRole } {
+  private extractTypeAndRole(text: string): {
+    type: PrismaScenarioType;
+    rawRole: TemplateScenarioRole;
+  } {
     let rawRole = 'Particular';
 
     const typeMatch = text.match(
-      /(?:^|\n)\s*(?:\*\*)?(?:Tipo(?:\s+de\s+escenario)?|Rol)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?(?:Tipo(?:\s+de\s+escenario)?|Rol)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
     );
     if (typeMatch) {
       rawRole = typeMatch[1].replace(/\*\*/g, '').trim();
@@ -140,7 +157,11 @@ export class MarkdownParserService {
     } else if (upper.includes('FUTURO')) {
       type = 'FUTURO';
       rawRole = 'FUTURO';
-    } else if (upper.includes('SUB-ESCENARIO') || upper.includes('SUB_ESCENARIO') || upper.includes('SUBESCENARIO')) {
+    } else if (
+      upper.includes('SUB-ESCENARIO') ||
+      upper.includes('SUB_ESCENARIO') ||
+      upper.includes('SUBESCENARIO')
+    ) {
       type = 'ACTUAL';
       rawRole = 'SUB_ESCENARIO';
     } else if (upper.includes('EXCEPCION') || upper.includes('EXCEPCIÓN')) {
@@ -156,7 +177,7 @@ export class MarkdownParserService {
 
   private extractObjective(text: string): string {
     const match = text.match(
-      /(?:^|\n)\s*(?:\*\*)?Objetivo(?:\*\*)?\s*:\s*(?:\*\*)?\s*([\s\S]*?)(?=(?:\n\s*(?:\*\*|#{1,3}\s*)?(?:Contexto|Ubicaci[oó]n|Precondici[oó]n|Actores|Recursos|Episodios|Excepciones)|$))/i,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?Objetivo(?:\*\*)?\s*:\s*(?:\*\*)?\s*([\s\S]*?)(?=(?:\n\s*(?:[●*•\-]\s*)?(?:\*\*|#{1,3}\s*)?(?:Contexto|Ubicaci[oó]n|Precondici[oó]n|Actores|Recursos|Episodios|Restricciones|Excepciones)|$))/i,
     );
     if (!match) return '';
     const clean = match[1].replace(/\*\*/g, '').trim();
@@ -174,13 +195,13 @@ export class MarkdownParserService {
 
     // Buscar bloque "Contexto:"
     const contextBlockMatch = text.match(
-      /(?:^|\n)\s*(?:\*\*)?Contexto(?:\*\*)?\s*:?([\s\S]*?)(?=(?:\n\s*(?:\*\*|#{1,3}\s*)?(?:Recursos|Actores|Episodios|Excepciones)|$))/i,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?Contexto(?:\*\*)?\s*:?([\s\S]*?)(?=(?:\n\s*(?:[●*•\-]\s*)?(?:\*\*|#{1,3}\s*)?(?:Recursos|Actores|Episodios|Restricciones|Excepciones)|$))/i,
     );
     const searchArea = contextBlockMatch ? contextBlockMatch[1] : text;
 
     // Ubicación Geográfica
     const geoMatch = searchArea.match(
-      /(?:^|\n)\s*(?:-\s*)?(?:\*\*)?(?:Ubicaci[oó]n\s+Geogr[aá]fica|Geogr[aá]fica)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?(?:Ubicaci[oó]n\s+Geogr[aá]fica|Geogr[aá]fica)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
     );
     if (geoMatch) {
       contextGeo = this.cleanValue(geoMatch[1].replace(/\*\*/g, ''));
@@ -188,7 +209,7 @@ export class MarkdownParserService {
 
     // Ubicación Temporal
     const timeMatch = searchArea.match(
-      /(?:^|\n)\s*(?:-\s*)?(?:\*\*)?(?:Ubicaci[oó]n\s+Temporal|Temporal)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?(?:Ubicaci[oó]n\s+Temporal|Temporal)(?:\*\*)?\s*:\s*(?:\*\*)?\s*(.+)$/im,
     );
     if (timeMatch) {
       contextTime = this.cleanValue(timeMatch[1].replace(/\*\*/g, ''));
@@ -196,13 +217,18 @@ export class MarkdownParserService {
 
     // Precondiciones
     const precondMatch = searchArea.match(
-      /(?:^|\n)\s*(?:-\s*)?(?:\*\*)?Precondici[oó]n(?:es)?(?:\*\*)?\s*:\s*(?:\*\*)?\s*([\s\S]*?)(?=(?:\n\s*(?:-\s*)?(?:\*\*)?(?:Ubicaci[oó]n|Recursos|Actores|Episodios|Excepciones)|$))/i,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?Precondici[oó]n(?:es)?(?:\*\*)?\s*:\s*(?:\*\*)?\s*([\s\S]*?)(?=(?:\n\s*(?:[●*•\-]\s*)?(?:\*\*)?(?:Ubicaci[oó]n|Recursos|Actores|Episodios|Restricciones|Excepciones)|$))/i,
     );
     if (precondMatch) {
       const rawPrecond = precondMatch[1].trim();
       const cleanedLines = rawPrecond
         .split('\n')
-        .map((l) => l.replace(/^\s*[●*•\-]\s*/, '').replace(/\*\*/g, '').trim())
+        .map((l) =>
+          l
+            .replace(/^\s*[●*•\-]\s*/, '')
+            .replace(/\*\*/g, '')
+            .trim(),
+        )
         .filter((l) => l.length > 0 && !this.isEmptyValue(l));
 
       if (cleanedLines.length > 0) {
@@ -215,9 +241,12 @@ export class MarkdownParserService {
     return { contextGeo, contextTime, contextPrecond };
   }
 
-  private extractList(text: string, sectionName: 'Actores' | 'Recursos'): string[] {
+  private extractList(
+    text: string,
+    sectionName: 'Actores' | 'Recursos',
+  ): string[] {
     const pattern = new RegExp(
-      `(?:^|\\n)\\s*(?:\\*\\*)?${sectionName}(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?\\s*([\\s\\S]*?)(?=(?:\\n\\s*(?:\\*\\*|#{1,3}\\s*)?(?:Actores|Recursos|Contexto|Episodios|Excepciones)|$))`,
+      `(?:^|\\n)\\s*(?:[●*•\\-]\\s*)?(?:\\*\\*)?${sectionName}(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?\\s*([\\s\\S]*?)(?=(?:\\n\\s*(?:[●*•\\-]\\s*)?(?:\\*\\*|#{1,3}\\s*)?(?:Actores|Recursos|Contexto|Episodios|Restricciones|Excepciones)|$))`,
       'i',
     );
     const match = text.match(pattern);
@@ -229,24 +258,39 @@ export class MarkdownParserService {
     // Si viene en lista multilínea con viñetas o saltos de línea
     const lines = rawContent
       .split('\n')
-      .map((l) => l.replace(/^\s*[●*•\-]\s*/, '').replace(/\*\*/g, '').replace(/^\*+|\*+$/g, '').trim())
+      .map((l) =>
+        l
+          .replace(/^\s*[●*•\-]\s*/, '')
+          .replace(/\*\*/g, '')
+          .replace(/^\*+|\*+$/g, '')
+          .trim(),
+      )
       .filter((l) => l.length > 0 && !this.isEmptyValue(l));
 
     // Si había múltiples líneas con viñetas
-    if (lines.length > 1 || (lines.length === 1 && /^[●*•\-]/.test(rawContent))) {
+    if (
+      lines.length > 1 ||
+      (lines.length === 1 && /^[●*•\-]/.test(rawContent))
+    ) {
       return lines;
     }
 
     // Si viene en una sola línea separada por comas: "Cajero, Solicitante"
     return rawContent
       .split(',')
-      .map((item) => item.replace(/^\s*[●*•\-]\s*/, '').replace(/\*\*/g, '').replace(/^\*+|\*+$/g, '').trim())
+      .map((item) =>
+        item
+          .replace(/^\s*[●*•\-]\s*/, '')
+          .replace(/\*\*/g, '')
+          .replace(/^\*+|\*+$/g, '')
+          .trim(),
+      )
       .filter((item) => item.length > 0 && !this.isEmptyValue(item));
   }
 
   private extractEpisodes(text: string): EpisodeParsed[] {
     const match = text.match(
-      /(?:^|\n)\s*(?:\*\*)?Episodios(?:\*\*)?\s*:\s*([\s\S]*?)(?=(?:\n\s*(?:\*\*|#{1,3}\s*)?Excepciones|$))/i,
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?Episodios(?:\*\*)?\s*:\s*([\s\S]*?)(?=(?:\n\s*(?:[●*•\-]\s*)?(?:\*\*|#{1,3}\s*)?(?:Restricciones(?:\s+Globales)?|Excepciones)|$))/i,
     );
     if (!match) return [];
 
@@ -295,17 +339,25 @@ export class MarkdownParserService {
     cleanText = cleanText.replace(/\s*\[←[^\]]+\]/g, '').trim();
 
     // 2. Extraer restricción: "[Restricción: ...]" o 'Restricción: “...”'
-    const bracketRestrMatch = cleanText.match(/\[\s*Restricci[oó]n:\s*(.+?)\]/i);
+    const bracketRestrMatch = cleanText.match(
+      /\[\s*Restricci[oó]n:\s*(.+?)\]/i,
+    );
     if (bracketRestrMatch) {
-      restriction = bracketRestrMatch[1].replace(/^[“"']+|[.”"']+$/g, '').trim();
+      restriction = bracketRestrMatch[1]
+        .replace(/^[“"']+|[.”"']+$/g, '')
+        .trim();
       cleanText = cleanText.replace(bracketRestrMatch[0], '').trim();
     } else {
-      const inlineRestrMatch = cleanText.match(/(?:(,\s*)|\.\s*|\s+)Restricci[oó]n:\s*[“"']?(.+?)[”"']?$/i);
+      const inlineRestrMatch = cleanText.match(
+        /(?:(,\s*)|\.\s*|\s+)Restricci[oó]n:\s*[“"']?(.+?)[”"']?$/i,
+      );
       if (inlineRestrMatch) {
         const fullMatch = inlineRestrMatch[0];
         const hadDot = fullMatch.startsWith('.');
         const hadComma = fullMatch.startsWith(',');
-        restriction = inlineRestrMatch[2].replace(/^[“"']+|[.”"']+$/g, '').trim();
+        restriction = inlineRestrMatch[2]
+          .replace(/^[“"']+|[.”"']+$/g, '')
+          .trim();
         cleanText = cleanText.slice(0, inlineRestrMatch.index).trim();
         if (hadDot && !cleanText.endsWith('.')) {
           cleanText += '.';
@@ -344,7 +396,9 @@ export class MarkdownParserService {
   }
 
   private extractExceptions(text: string): ScenarioException[] {
-    const match = text.match(/(?:^|\n)\s*(?:\*\*)?Excepciones(?:\*\*)?\s*:\s*([\s\S]*?)$/i);
+    const match = text.match(
+      /(?:^|\n)\s*(?:[●*•\-]\s*)?(?:\*\*)?Excepciones(?:\*\*)?\s*:\s*([\s\S]*?)$/i,
+    );
     if (!match) return [];
 
     const rawExceptions = match[1].trim();
@@ -354,14 +408,26 @@ export class MarkdownParserService {
 
     // Formato 1: "Causa: <causa>. Tratamiento: <tratamiento>" (oficial en una o múltiples líneas)
     const regexOficial =
-      /Causa:\s*([\s\S]+?)(?=(?:\r?\n\s*|\s+)(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:)\s*(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:\s*([\s\S]+?)(?=(?:\n\s*Causa:|$))/gi;
+      /Causa:\s*([\s\S]+?)(?=(?:\r?\n\s*|\s+)(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:)\s*(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:\s*([\s\S]+?)(?=(?:\n\s*(?:[●*•\-]\s*)?Causa:|$))/gi;
     let matchOficial: RegExpExecArray | null;
     while ((matchOficial = regexOficial.exec(rawExceptions)) !== null) {
-      let causa = matchOficial[1].replace(/^[●*•\-]\s*/, '').replace(/\*\*/g, '').trim();
-      causa = causa.replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
-      const tratamiento = matchOficial[2].replace(/^[●*•\-]\s*/, '').replace(/\*\*/g, '').trim();
+      let causa = matchOficial[1]
+        .replace(/^[●*•\-]\s*/, '')
+        .replace(/\*\*/g, '')
+        .trim();
+      causa = causa
+        .replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '')
+        .trim();
+      const tratamiento = matchOficial[2]
+        .replace(/^[●*•\-]\s*/, '')
+        .replace(/\*\*/g, '')
+        .trim();
       if (!this.isEmptyValue(causa) || !this.isEmptyValue(tratamiento)) {
-        exceptions.push({ causa, tratamiento, rawText: matchOficial[0].trim() });
+        exceptions.push({
+          causa,
+          tratamiento,
+          rawText: matchOficial[0].trim(),
+        });
       }
     }
 
@@ -370,13 +436,21 @@ export class MarkdownParserService {
     // Formato 2: Viñetas tipo "- [Causa]: [Tratamiento]" o "- Causa: Tratamiento" o "- Causa: <texto>"
     const lines = rawExceptions.split('\n');
     for (const line of lines) {
-      const trimmed = line.replace(/^\s*[●*•\-]\s*/, '').replace(/\*\*/g, '').trim();
+      const trimmed = line
+        .replace(/^\s*[●*•\-]\s*/, '')
+        .replace(/\*\*/g, '')
+        .trim();
       if (!trimmed || this.isEmptyValue(trimmed)) continue;
 
       // Si la línea solo especifica Causa sin Tratamiento (ej. "- Causa: Corte de luz")
-      if (/^Causa\s*:/i.test(trimmed) && !/(?:Tratamiento|Soluci[oó]n)\s*:/i.test(trimmed)) {
+      if (
+        /^Causa\s*:/i.test(trimmed) &&
+        !/(?:Tratamiento|Soluci[oó]n)\s*:/i.test(trimmed)
+      ) {
         let causaOnly = trimmed.replace(/^Causa\s*:\s*/i, '').trim();
-        causaOnly = causaOnly.replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
+        causaOnly = causaOnly
+          .replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '')
+          .trim();
         exceptions.push({
           causa: causaOnly,
           tratamiento: '',
@@ -391,7 +465,9 @@ export class MarkdownParserService {
       );
       if (inlineMatch) {
         let causa = inlineMatch[1].trim();
-        causa = causa.replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
+        causa = causa
+          .replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '')
+          .trim();
         exceptions.push({
           causa,
           tratamiento: inlineMatch[2].trim(),
@@ -403,9 +479,18 @@ export class MarkdownParserService {
       // Formato con dos puntos separador: "- Causa: Tratamiento" o "- [Causa]: [Tratamiento]"
       const colonIndex = trimmed.indexOf(':');
       if (colonIndex !== -1) {
-        let part1 = trimmed.slice(0, colonIndex).replace(/^\[|\]$/g, '').trim();
-        let part2 = trimmed.slice(colonIndex + 1).replace(/^\[|\]$/g, '').trim();
-        part1 = part1.replace(/^Causa\s*:\s*/i, '').replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '').trim();
+        let part1 = trimmed
+          .slice(0, colonIndex)
+          .replace(/^\[|\]$/g, '')
+          .trim();
+        let part2 = trimmed
+          .slice(colonIndex + 1)
+          .replace(/^\[|\]$/g, '')
+          .trim();
+        part1 = part1
+          .replace(/^Causa\s*:\s*/i, '')
+          .replace(/\s*(?:Soluci[oó]n|Tratamiento)\s*\/.*$/i, '')
+          .trim();
         part2 = part2
           .replace(
             /^(?:Soluci[oó]n\s*\/\s*Tratamiento|Tratamiento\s*\/\s*Soluci[oó]n|Tratamiento|Soluci[oó]n)\s*:\s*/i,
