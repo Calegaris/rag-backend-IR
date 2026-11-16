@@ -164,7 +164,31 @@ export class ChunkingService {
       return structuredChunks;
     }
 
-    // Format B: Compact bullet list (- Nombre (Tipo): Noción / Impacto)
+    // Format B: Labeled Símbolo blocks (Símbolo N°... Nombre:... Tipo:... Noción:... Impacto:...)
+    const labeledChunks = this.parseLabeledSymbolBlocks(
+      projectName,
+      normalized,
+    );
+    if (labeledChunks.length > 0) {
+      return labeledChunks;
+    }
+
+    // Format C: Freeform descriptive blocks (Nombre (O|S|V|E|Objeto|Sujeto|Verbo|Estado) + Noción + Impacto)
+    const freeformChunks = this.parseFreeformLelBlocks(projectName, normalized);
+    if (freeformChunks.length > 0) {
+      return freeformChunks;
+    }
+
+    // Format D: Tabular/Transcript blocks (Símbolo Nº... Tipo... Nombre... Noción... Impacto...)
+    const tabularChunks = this.parseTabularTranscriptLelBlocks(
+      projectName,
+      normalized,
+    );
+    if (tabularChunks.length > 0) {
+      return tabularChunks;
+    }
+
+    // Format E: Compact bullet list (- Nombre (Tipo): Noción / Impacto)
     return this.parseCompactLelList(projectName, normalized);
   }
 
@@ -274,6 +298,80 @@ export class ChunkingService {
     return chunks;
   }
 
+  private parseLabeledSymbolBlocks(
+    projectName: string,
+    text: string,
+  ): RagChunk<LelChunkMetadata>[] {
+    const blocks = text.split(
+      /\n+(?=(?:\*\*|\*|#{1,4}\s*)?S[ií]mbolo[^\n\r]*?\d+)/i,
+    );
+    const chunks: RagChunk<LelChunkMetadata>[] = [];
+    let autoNumber = 1;
+
+    for (const b of blocks) {
+      const trimmed = b.trim();
+      if (!/(?:S[ií]mbolo)/i.test(trimmed)) continue;
+
+      const numMatch = trimmed.match(/S[ií]mbolo[^\n\r]*?(\d+)/i);
+      const nameMatch = trimmed.match(
+        /(?:^|\n)\s*(?:\*\*)?Nombre(?:\/s)?(?:\*\*)?\s*:\s*(?:\*\*)?\s*([^\n\r]+)/i,
+      );
+      const typeMatch = trimmed.match(
+        /(?:^|\n)\s*(?:\*\*)?(?:Tipo|Categor[ií]a)(?:\*\*)?\s*:\s*(?:\*\*)?\s*([^\n\r]+)/i,
+      );
+      const nocionMatch = trimmed.match(
+        /(?:^|\n)\s*(?:\*\*)?Noci[oó]n(?:\*\*)?\s*:\s*([\s\S]*?)(?=(?:\n\s*(?:\*\*)?Impacto(?:\*\*)?\s*:|$))/i,
+      );
+      const impactoMatch = trimmed.match(
+        /(?:^|\n)\s*(?:\*\*)?Impacto(?:\*\*)?\s*:\s*([\s\S]*?)$/i,
+      );
+
+      const parsedNum = numMatch ? parseInt(numMatch[1], 10) : autoNumber;
+      const symbolNumber = Number.isNaN(parsedNum) ? autoNumber : parsedNum;
+
+      let rawName = nameMatch ? nameMatch[1].replace(/\*\*/g, '').trim() : '';
+      if (!rawName) {
+        const headerNameMatch = trimmed.match(
+          /^(?:[#*`\s]*)?S[ií]mbolo[^\n\r:]*?:\s*(?:\*\*)?([^\n\r]+)/i,
+        );
+        if (headerNameMatch && !/^\d+$/.test(headerNameMatch[1].trim())) {
+          rawName = headerNameMatch[1].replace(/\*\*/g, '').trim();
+        }
+      }
+
+      const rawCategory = typeMatch
+        ? typeMatch[1].replace(/\*\*/g, '').trim()
+        : 'No especificado';
+      const nocion = nocionMatch
+        ? this.cleanMultilineField(nocionMatch[1])
+        : '';
+      const impacto = impactoMatch
+        ? this.cleanMultilineField(impactoMatch[1])
+        : '';
+
+      if (!rawName || (!nocion && !impacto)) continue;
+
+      const category = this.normalizeCategory(rawCategory);
+      const content = `Símbolo LEL: ${rawName}\nCategoría: ${category}\nNoción: ${nocion}\nImpacto: ${impacto}`;
+
+      chunks.push({
+        content,
+        metadata: {
+          sourceType: 'LEL',
+          projectName,
+          symbolNumber,
+          symbolName: rawName,
+          category,
+          nocion,
+          impacto,
+        },
+      });
+      autoNumber++;
+    }
+
+    return chunks;
+  }
+
   private parseCompactLelList(
     projectName: string,
     text: string,
@@ -292,7 +390,7 @@ export class ChunkingService {
       if (!match) continue;
 
       const symbolName = match[1].replace(/\*\*/g, '').trim();
-      const category = match[2].trim();
+      const category = this.normalizeCategory(match[2].trim());
       const rest = match[3].trim();
 
       let nocion = rest;
@@ -330,10 +428,118 @@ export class ChunkingService {
     return chunks;
   }
 
+  private parseFreeformLelBlocks(
+    projectName: string,
+    text: string,
+  ): RagChunk<LelChunkMetadata>[] {
+    const chunks: RagChunk<LelChunkMetadata>[] = [];
+    const regex =
+      /(?:^|\n)([^\n\r#\-*•●]+?)\s*[\(\[]([OSVE]|Objeto|Sujeto|Verbo|Estado)[\)\]]\s*\n+([ \t]*Noci[oó]n:?[\s\S]*?)(?=(?:\n[^\n\r#\-*•●]+?\s*[\(\[]([OSVE]|Objeto|Sujeto|Verbo|Estado)[\)\]]\s*\n+[ \t]*Noci[oó]n:?)|$)/gi;
+
+    let match: RegExpExecArray | null;
+    let symbolNumber = 1;
+
+    while ((match = regex.exec(text)) !== null) {
+      const rawName = match[1].replace(/\*\*/g, '').trim();
+      const rawCategory = match[2].trim();
+      const rawBody = match[3].trim();
+
+      const niMatch = rawBody.match(
+        /Noci[oó]n:?\s*([\s\S]*?)(?=(?:Impacto:?|$))(?:Impacto:?\s*([\s\S]*))?/i,
+      );
+
+      const nocion =
+        niMatch && niMatch[1] ? this.cleanMultilineField(niMatch[1]) : '';
+      const impacto =
+        niMatch && niMatch[2] ? this.cleanMultilineField(niMatch[2]) : '';
+
+      if (!rawName || (!nocion && !impacto)) {
+        continue;
+      }
+
+      const category = this.normalizeCategory(rawCategory);
+      const content = `Símbolo LEL: ${rawName}\nCategoría: ${category}\nNoción: ${nocion}\nImpacto: ${impacto}`;
+
+      chunks.push({
+        content,
+        metadata: {
+          sourceType: 'LEL',
+          projectName,
+          symbolNumber,
+          symbolName: rawName,
+          category,
+          nocion,
+          impacto,
+        },
+      });
+      symbolNumber++;
+    }
+
+    return chunks;
+  }
+
+  private parseTabularTranscriptLelBlocks(
+    projectName: string,
+    text: string,
+  ): RagChunk<LelChunkMetadata>[] {
+    const chunks: RagChunk<LelChunkMetadata>[] = [];
+    const regex =
+      /S[ií]mbolo\s*N[º°ro\.]*\s*:?\s*(\d+)?[\s\t]+(?:Tipo|Categor[ií]a)\s*:?\s*([^\n\r]+)[\s\S]*?Nombre(?:\/s)?\s*[:\t]?\s*([^\n\r]+)[\s\S]*?Noci[oó]n\s*[:\t]?\s*([\s\S]*?)(?=Impacto\s*[:\t]?)Impacto\s*[:\t]?\s*([\s\S]*?)(?=(?:S[ií]mbolo\s*N[º°ro\.]*\s*:?|-- \d+ of \d+ --|$))/gi;
+
+    let match: RegExpExecArray | null;
+    let autoNumber = 1;
+
+    while ((match = regex.exec(text)) !== null) {
+      const parsedNum = match[1] ? parseInt(match[1], 10) : autoNumber;
+      const symbolNumber = Number.isNaN(parsedNum) ? autoNumber : parsedNum;
+      const rawCategory = match[2].trim();
+      const rawName = match[3].replace(/\*\*/g, '').trim();
+      const nocion = this.cleanMultilineField(match[4]);
+      const impacto = this.cleanMultilineField(match[5]);
+
+      if (!rawName || (!nocion && !impacto)) {
+        continue;
+      }
+
+      const category = this.normalizeCategory(rawCategory);
+      const content = `Símbolo LEL: ${rawName}\nCategoría: ${category}\nNoción: ${nocion}\nImpacto: ${impacto}`;
+
+      chunks.push({
+        content,
+        metadata: {
+          sourceType: 'LEL',
+          projectName,
+          symbolNumber,
+          symbolName: rawName,
+          category,
+          nocion,
+          impacto,
+        },
+      });
+      autoNumber++;
+    }
+
+    return chunks;
+  }
+
+  private normalizeCategory(cat: string): string {
+    const clean = cat.replace(/[\[\]\(\)]/g, '').trim().toUpperCase();
+    if (clean === 'O' || clean.includes('OBJETO')) return 'Objeto';
+    if (clean === 'S' || clean.includes('SUJETO')) return 'Sujeto';
+    if (clean === 'V' || clean.includes('VERBO')) return 'Verbo';
+    if (clean === 'E' || clean.includes('ESTADO')) return 'Estado';
+    return cat.trim() || 'No especificado';
+  }
+
   private cleanMultilineField(raw: string): string {
     return raw
       .split('\n')
-      .map((line) => line.replace(/\*\*/g, '').trim())
+      .map((line) =>
+        line
+          .replace(/^[\s●*•\-]+/, '')
+          .replace(/\*\*/g, '')
+          .trim(),
+      )
       .filter((line) => line.length > 0 && !/^---+$/.test(line))
       .join(' ');
   }

@@ -37,6 +37,14 @@ export interface SimilaritySearchResult {
   similarity: number;
 }
 
+export interface IndexedLelProjectStat {
+  projectName: string;
+  documentId: string;
+  title: string;
+  symbolsCount: number;
+  uploadedAt: Date | string;
+}
+
 export interface RagStatsResponse {
   totalDocuments: number;
   totalEmbeddings: number;
@@ -50,6 +58,7 @@ export interface RagStatsResponse {
       embeddings: number;
     };
   };
+  projects?: IndexedLelProjectStat[];
 }
 
 @Injectable()
@@ -193,11 +202,25 @@ export class VectorStoreService {
   }
 
   async getStats(): Promise<RagStatsResponse> {
+    const findManyFn = (this.prisma.document as any)?.findMany;
+    const lelDocumentsPromise: Promise<any[]> =
+      typeof findManyFn === 'function'
+        ? this.prisma.document.findMany({
+            where: { scope: DocumentScope.LEL_DOMINIO },
+            include: {
+              _count: { select: { embeddings: true } },
+              embeddings: { take: 1, select: { metadata: true } },
+            },
+            orderBy: { uploadedAt: 'desc' },
+          })
+        : Promise.resolve([]);
+
     const [
       marcoDocs,
       marcoEmbeddings,
       lelDocs,
       lelEmbeddings,
+      lelDocuments,
     ] = await Promise.all([
       this.prisma.document.count({
         where: { scope: DocumentScope.METODOLOGIA },
@@ -211,7 +234,23 @@ export class VectorStoreService {
       this.prisma.embedding.count({
         where: { document: { scope: DocumentScope.LEL_DOMINIO } },
       }),
+      lelDocumentsPromise,
     ]);
+
+    const projects: IndexedLelProjectStat[] = Array.isArray(lelDocuments)
+      ? lelDocuments.map((doc) => ({
+          projectName:
+            (doc.embeddings?.[0]?.metadata as any)?.projectName ||
+            String(doc.title || '')
+              .replace(/^LEL\s*-\s*/i, '')
+              .trim() ||
+            doc.title,
+          documentId: doc.id,
+          title: doc.title,
+          symbolsCount: doc._count?.embeddings ?? 0,
+          uploadedAt: doc.uploadedAt,
+        }))
+      : [];
 
     return {
       totalDocuments: marcoDocs + lelDocs,
@@ -226,7 +265,7 @@ export class VectorStoreService {
           embeddings: lelEmbeddings,
         },
       },
+      projects,
     };
   }
 }
-

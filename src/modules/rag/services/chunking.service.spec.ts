@@ -147,26 +147,122 @@ ${longParagraphB}
       expect(chunks[16].metadata.category).toBe('Sujeto');
     });
 
-    it('should parse compact bullet-list LEL format', () => {
-      const compactLel = `
-- **Cajero** (Sujeto): Empleado municipal encargado de cobros. Impacto: Registra pagos y emite recibos.
-- **Formulario** (Objeto): Planilla con datos del trámite. Impacto: Es presentado por el solicitante.
+    it('should parse labeled Símbolo blocks (Radiomano format with bold labels)', () => {
+      const radiomanoLel = `
+**LÉXICO EXTENDIDO DEL LENGUAJE**
+
+**Proyecto:** Optimización del sistema de Radiomano
+
+**DESCRIPCIÓN DE SÍMBOLOS**
+
+**Símbolo N°:** 1  
+**Nombre:** ADMINISTRAR EL PROGRAMA  
+**Tipo:** Verbo  
+**Noción:** 
+
+1. Es realizada por el productor.  
+2. Acción por la cual el productor organiza la agenda, las entrevistas, coordina el aire, etc.  
+3. Es realizada en las oficinas de la radio.
+
+**Impacto:**
+
+1. Permite que el programa salga al aire correctamente.  
+2. Da lugar a una programación organizada.
+
+**Símbolo N°:** 2  
+**Nombre:** AGENDA  
+**Tipo:** Objeto  
+**Noción:**
+
+1. Es el conjunto de temáticas, entrevistas y asuntos que va a tener el programa.  
+2. Es uno de los resultados de la administración del programa.
+
+**Impacto:**
+
+1. Es creado por el productor.  
+2. Es en lo que se basa la programación.
+
+**Símbolo N°:** 3  
+**Nombre:** AL AIRE  
+**Tipo:** Estado  
+**Noción:**
+
+1. Estado del programa.
+
+**Impacto:**
+
+1. Se transmite.
 `;
 
-      const chunks = service.chunkLelMarkdown('Municipalidad', compactLel);
+      const chunks = service.chunkLelMarkdown(
+        'Optimización del sistema de Radiomano',
+        radiomanoLel,
+      );
+
+      expect(chunks).toHaveLength(3);
+      expect(chunks[0].metadata.symbolName).toBe('ADMINISTRAR EL PROGRAMA');
+      expect(chunks[0].metadata.category).toBe('Verbo');
+      expect(chunks[0].metadata.nocion).toContain(
+        'Es realizada por el productor.',
+      );
+      expect(chunks[1].metadata.symbolName).toBe('AGENDA');
+      expect(chunks[1].metadata.category).toBe('Objeto');
+      expect(chunks[2].metadata.symbolName).toBe('AL AIRE');
+      expect(chunks[2].metadata.category).toBe('Estado');
+    });
+
+    it('should parse freeform descriptive LEL blocks with (O/S/V/E) and Noción/Impacto', () => {
+      const freeformLel = `
+Agenda / Agenda de reuniones (O)
+
+Noción:
+Es el elemento donde se registran los requerimientos de las reuniones.
+
+Impacto:
+Se registra el objetivo de la reunión y los convocados.
+
+Convocante (S)
+
+Noción:
+Persona que convoca a la reunión.
+
+Impacto:
+Establece la fecha y envía la notificación.
+`;
+
+      const chunks = service.chunkLelMarkdown(
+        'Sistema de Gestión de Reuniones',
+        freeformLel,
+      );
 
       expect(chunks).toHaveLength(2);
-      expect(chunks[0].metadata).toEqual({
-        sourceType: 'LEL',
-        projectName: 'Municipalidad',
-        symbolNumber: 1,
-        symbolName: 'Cajero',
-        category: 'Sujeto',
-        nocion: 'Empleado municipal encargado de cobros',
-        impacto: 'Registra pagos y emite recibos.',
-      });
-      expect(chunks[1].metadata.symbolName).toBe('Formulario');
-      expect(chunks[1].metadata.category).toBe('Objeto');
+      expect(chunks[0].metadata.symbolName).toBe(
+        'Agenda / Agenda de reuniones',
+      );
+      expect(chunks[0].metadata.category).toBe('Objeto');
+      expect(chunks[0].metadata.nocion).toBe(
+        'Es el elemento donde se registran los requerimientos de las reuniones.',
+      );
+      expect(chunks[1].metadata.symbolName).toBe('Convocante');
+      expect(chunks[1].metadata.category).toBe('Sujeto');
+    });
+
+    it('should parse tabular transcript LEL format', () => {
+      const transcriptLel = `
+Símbolo Nº:1 	Tipo: Sujeto
+Nombre/s 	Administrativo
+Noción 	● Es la persona que trabaja para la empresa
+Impacto 	● Asigna las visitas
+`;
+
+      const chunks = service.chunkLelMarkdown('Mystery Shopper', transcriptLel);
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0].metadata.symbolName).toBe('Administrativo');
+      expect(chunks[0].metadata.category).toBe('Sujeto');
+      expect(chunks[0].metadata.nocion).toBe(
+        'Es la persona que trabaja para la empresa',
+      );
     });
   });
 });
