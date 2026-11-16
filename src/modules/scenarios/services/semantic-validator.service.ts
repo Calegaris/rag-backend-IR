@@ -75,7 +75,7 @@ export class SemanticValidatorService {
           query,
           type: DocType.LEL,
           projectName,
-          topK: 10,
+          topK: 25,
         },
         options?.apiKeyOverride,
       ),
@@ -220,6 +220,7 @@ IMPORTANTE:
 1. Consistencia con el LEL ("SEM_LEL_CONSISTENCY"):
    - ¿Los Actores declarados corresponden a símbolos de categoría "Sujeto" en el LEL (recordando que en escenarios FUTURO el 'Sistema' o 'Sistema EJE' es un Actor válido y obligatorio aunque no esté en el LEL)?
    - ¿Los Recursos declarados corresponden a símbolos de categoría "Objeto" en el LEL?
+   - Cuando un Recurso declarado no pertenezca a la categoría 'Objeto' en el LEL (por ejemplo, si figura como 'Verbo' o 'Estado', como ocurre con 'Proceso Judicial'), repórtalo consistentemente con severidad 'WARNING' y sugiere reemplazarlo o reclasificarlo en el LEL, evitando marcarlo como 'ERROR' para mantener determinismo en la validez global.
    - ¿Se utilizan sinónimos informales o términos ajenos al dominio cuando existe un Símbolo LEL específico recuperado?
    - ¿Las acciones de los episodios contradicen la Noción o el Impacto de los símbolos del LEL?
 
@@ -239,6 +240,7 @@ IMPORTANTE:
 6. Coherencia General ("SEM_COHERENCE"):
    - ¿Existe un flujo lógico completo entre los episodios que permita alcanzar el Objetivo declarado del escenario?
    - ¿Las invocaciones a sub-escenarios son coherentes con el flujo?
+   - REGLA SOBRE ESCENARIOS INTEGRADORES: En escenarios de tipo INTEGRADOR (type: 'INTEGRADOR'), los episodios deben estar compuestos por los TÍTULOS en mayúsculas de los otros escenarios del sistema (por ejemplo, 'CARGAR DOCUMENTACIÓN' o 'DESCARGAR DOCUMENTACIÓN'). Esto constituye una invocación formal legítima a un escenario particular y NUNCA debe reportarse como una acción operativa de bajo nivel, error de estilo ni defecto semántico.
 
 Cada hallazgo DEBE incluir en "ragReference" la cita al Símbolo LEL (ej. "Símbolo LEL: Documento (Objeto)") o la sección del Marco Teórico utilizada como evidencia.
 Si el escenario no presenta defectos semánticos, devuelve "issues": [].

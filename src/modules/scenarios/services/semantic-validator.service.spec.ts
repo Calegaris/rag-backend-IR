@@ -92,7 +92,7 @@ describe('SemanticValidatorService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should retrieve LEL (topK: 10) and MARCO_TEORICO (topK: 6) from RagService, extract deduplicated LEL symbols, and return structured semantic issues', async () => {
+  it('should retrieve LEL (topK: 25) and MARCO_TEORICO (topK: 6) from RagService, extract deduplicated LEL symbols, and return structured semantic issues', async () => {
     mockRagService.search
       .mockResolvedValueOnce({
         query: 'mock query',
@@ -204,7 +204,7 @@ describe('SemanticValidatorService', () => {
       expect.objectContaining({
         type: DocType.LEL,
         projectName: 'Gestión de Documentos en Juzgado',
-        topK: 10,
+        topK: 25,
       }),
       'custom-key',
     );
