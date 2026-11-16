@@ -7,6 +7,6 @@ export interface DatabaseConfig {
 export default registerAs(
   'database',
   (): DatabaseConfig => ({
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgrespassword@localhost:5433/rag_escenarios_lel?schema=public',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgrespassword@localhost:5434/rag_escenarios_lel?schema=public',
   }),
 );

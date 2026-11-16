@@ -1,14 +1,20 @@
+name: escenarios-rag-lel
+
 services:
   postgres:
     image: ankane/pgvector:v0.5.1
     container_name: rag_escenarios_postgres
+    hostname: rag-escenarios-db
     restart: always
+    labels:
+      com.escenarios-rag.project: 'UNO - Investigacion Escenarios RAG & LEL'
+      com.escenarios-rag.service: 'PostgreSQL 15 + pgvector (384-dim)'
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
       POSTGRES_DB: rag_escenarios_lel
     ports:
-      - '5433:5432'
+      - '5434:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -20,3 +26,4 @@ services:
 
 volumes:
   pgdata:
+    name: rag_escenarios_pgdata
